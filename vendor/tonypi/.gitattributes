@@ -1,0 +1,5 @@
+# Preserve upstream inputs byte-for-byte, including across Windows checkouts.
+/LICENSE -text
+/model/*.xml -text
+/model/assets/*.stl binary
+/SHA256SUMS text eol=lf

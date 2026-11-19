@@ -1,0 +1,355 @@
+{
+  "note": "SHA-256 of every shipped file; regenerate with tools/make_manifest.py",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 179,
+      "sha256": "8e580c0d050dfa5d5fd3f8fc7965da591d1e1784f519d62a4861895e30fb9e3f"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 123,
+      "sha256": "e2d093eea90d2c476220e6b4d354027e5a8c64060f0c4662f27ae36f899f3461"
+    },
+    {
+      "path": "README.md",
+      "bytes": 9924,
+      "sha256": "7b1a96711edff14294aab065d14199511c414ddb66b383f7c2fd8ac3ed39142a"
+    },
+    {
+      "path": "RESEARCH_LOG.md",
+      "bytes": 9008,
+      "sha256": "c9ba4ccf7a2c368397aa94c5cfb061d71405ffb140f7e9a1ff2af60af5e488db"
+    },
+    {
+      "path": "build/tonypi_pro_as_is.report.md",
+      "bytes": 3190,
+      "sha256": "b3c135a3ca80267761ce2e5256a70f6020879e912afd777c5935ef72f3065c9b"
+    },
+    {
+      "path": "build/tonypi_pro_as_is.xml",
+      "bytes": 34162,
+      "sha256": "6505b18362c6180ddaa7524f904ceb9959b2666166449d9451dfd4778b4ccf9f"
+    },
+    {
+      "path": "build/tonypi_pro_contact_candidate.xml",
+      "bytes": 35959,
+      "sha256": "2684180eda38ed8748b625a2f0318a84041a3555d0a60944164ebfa54e11f6eb"
+    },
+    {
+      "path": "data/action-groups/MANIFEST.json",
+      "bytes": 1367,
+      "sha256": "9b5aed6ab776be76638ad058599cad47d21f05ccc0ba24160ad796cf4ee36938"
+    },
+    {
+      "path": "data/action-groups/README.md",
+      "bytes": 2879,
+      "sha256": "78f827b2ec6b56a93eca15fe6d31ee6e070e3447eea543170cf5ce09e61ae04d"
+    },
+    {
+      "path": "data/action-groups/demo_squat.d6a",
+      "bytes": 8192,
+      "sha256": "0139d984c088d473de78f61ef96f2374074a2ba96e23e9d122e71932c7e70519"
+    },
+    {
+      "path": "data/action-groups/demo_wave_left.d6a",
+      "bytes": 8192,
+      "sha256": "c0bbdf9ea0b5414ceffbf58af81735a77c2f4042b4ac57644ac0e070c7f0e9f2"
+    },
+    {
+      "path": "isaac_sim/README.md",
+      "bytes": 11791,
+      "sha256": "b64b7fe47c500e07d7ee74c414a8776a74fd088d7ee78d2be428af7ac3e7cd63"
+    },
+    {
+      "path": "isaac_sim/build_tonypi_urdf.py",
+      "bytes": 35676,
+      "sha256": "de7b3cd4ddfb5142663827a184cca781846cf816300fd4135d9edb2944f3ce6e"
+    },
+    {
+      "path": "isaac_sim/check_newton.py",
+      "bytes": 12332,
+      "sha256": "6d4fc7129daf127604ebfdc4c3f637ab3ca35cbefb2cd984b06899dbb15f8979"
+    },
+    {
+      "path": "isaac_sim/import_scene.py",
+      "bytes": 22776,
+      "sha256": "75871a1b676caf46f889f6759926d0b6db5c62ab744eeadb6aa40dd6cbb4f8b7"
+    },
+    {
+      "path": "isaac_sim/run_scene.py",
+      "bytes": 6040,
+      "sha256": "5242f582bfcc5a83c157d39cf18a1a8a1f8ae31ec5294283943afce06a86a9d2"
+    },
+    {
+      "path": "isaac_sim/source_integrity.py",
+      "bytes": 17056,
+      "sha256": "569745a0fdfa0432caa87a1a3be9b1e8f06f6d78ef8863270871796be8d784cc"
+    },
+    {
+      "path": "isaac_sim/test_build_tonypi_urdf.py",
+      "bytes": 33816,
+      "sha256": "3d08ff1fe701070367a7e6f91bf09a8f160de76781c94e1e61653869f2abd9db"
+    },
+    {
+      "path": "media/preview.png",
+      "bytes": 128678,
+      "sha256": "86e1859b42d998698b7b5b101d3682f8bf8c0916d3b7a3bc149737a13c47a9c5"
+    },
+    {
+      "path": "model/build_twin.py",
+      "bytes": 18393,
+      "sha256": "2f198ecb4d07fd121890b348118c7e50f0c1c31d1aa10de15b99ad925984b684"
+    },
+    {
+      "path": "model/ledger.csv",
+      "bytes": 148468,
+      "sha256": "dd103ad2236a3bb669806966a6489a8db9f11b467d07b75be332e73d773593f4"
+    },
+    {
+      "path": "model/measurements.csv",
+      "bytes": 1100,
+      "sha256": "013e71fa01794b63d89d8f2b5d4246b475e59d932b784849d4cbb8ba1bd0441e"
+    },
+    {
+      "path": "model/servo_map.csv",
+      "bytes": 12777,
+      "sha256": "988a65c8f2c9c0f5d57564de23d281ef24c7110aabd40b79140fde11f5b41261"
+    },
+    {
+      "path": "requirements-sim.txt",
+      "bytes": 159,
+      "sha256": "83059e51e9ed0d59f323fb33f9e6779a13ae85893cfb7e93e14ddd7732be626e"
+    },
+    {
+      "path": "sim/README.md",
+      "bytes": 5902,
+      "sha256": "a5e473f3eee9c63920c5770f3f711ff4935261ca62b20d565af98d725915da4c"
+    },
+    {
+      "path": "sim/build_contact_scene.py",
+      "bytes": 4663,
+      "sha256": "08456877559d66f89cadbe2a5c467a702f1b17811f2e2a124e3e5673aa5460d7"
+    },
+    {
+      "path": "sim/check_integration.py",
+      "bytes": 14270,
+      "sha256": "e038af9cc13419c9877372b76aad70be540fe2f2bb7451fde89b32a66488e05d"
+    },
+    {
+      "path": "sim/leg_posture_env.py",
+      "bytes": 6352,
+      "sha256": "b572f05c20520fe9bf03f9f09c0e8e0d8c9e535951d341a98f6d24e6a5e95026"
+    },
+    {
+      "path": "sim/play_action.py",
+      "bytes": 8347,
+      "sha256": "8ba72b80f17db11876228adfd3f7bdb823fb0a347095cb41144d799b47ad3cdd"
+    },
+    {
+      "path": "sim/preview_action_pose.py",
+      "bytes": 6690,
+      "sha256": "e3823091582d17b81332a70abc538d03c00352fc736fe59a6a5965a230855fc3"
+    },
+    {
+      "path": "sim/tune_posture_demo.py",
+      "bytes": 3180,
+      "sha256": "80de1fbf56b28ac0473c2a0bf2fb498ce717b2be5a738e37487d2705306db3b3"
+    },
+    {
+      "path": "site/index.html",
+      "bytes": 7129,
+      "sha256": "8519666d7af1a897a9058c0ffc583128205e1e165f33f1726eb514db274802e3"
+    },
+    {
+      "path": "site/model.json",
+      "bytes": 780948,
+      "sha256": "8c95042a7b64b4dd02d423cfec3aa67a77d9639dc43fcbc52870549fe2a860c1"
+    },
+    {
+      "path": "site/preview.png",
+      "bytes": 128678,
+      "sha256": "86e1859b42d998698b7b5b101d3682f8bf8c0916d3b7a3bc149737a13c47a9c5"
+    },
+    {
+      "path": "tools/build_site.py",
+      "bytes": 4556,
+      "sha256": "58aff7ad393d2ad849301d246d806b2fb703dd32f0ff52bd64fdb83038e92730"
+    },
+    {
+      "path": "tools/d6a_info.py",
+      "bytes": 4686,
+      "sha256": "f918a2ca12160b5af0d8e44fece321dcf1a73375da4c4ff6d6de3bd28e6cc36c"
+    },
+    {
+      "path": "tools/inspect_mjcf.py",
+      "bytes": 7937,
+      "sha256": "8629efe322833c6ff4fe94f07f6663d456d3b14a5b98b1df79051a85269486da"
+    },
+    {
+      "path": "tools/make_demo_action.py",
+      "bytes": 5457,
+      "sha256": "8457b9eaf78794b6fd100e162e574fd31c76660a2fe4d013dd86a930c6f1b8c9"
+    },
+    {
+      "path": "tools/make_manifest.py",
+      "bytes": 2718,
+      "sha256": "6e085baaf48cb37e23c23c30f20563aff8450a7678ff80452afed43b606cd00c"
+    },
+    {
+      "path": "tools/mj_inspect.py",
+      "bytes": 3113,
+      "sha256": "65ea82d896f9628a777aba5ec92e138b72a66acaf6b04906f726171fd30eb5a6"
+    },
+    {
+      "path": "tools/render_preview.py",
+      "bytes": 3164,
+      "sha256": "1ed53a47df5292d24daa1b79324d0ceb4f6b41750674cdcbe2c952bedb848e72"
+    },
+    {
+      "path": "tools/seed_ledger.py",
+      "bytes": 20590,
+      "sha256": "42f0a933782570c8b71558bae20a328b20d5357b4305fe64926e9f53b08999ac"
+    },
+    {
+      "path": "tools/servo_map.py",
+      "bytes": 8606,
+      "sha256": "360f286ab062fb175fb05433d320e582d1ffe7f13facab5279f2aa9e1dc1e9b0"
+    },
+    {
+      "path": "vendor/tonypi/.gitattributes",
+      "bytes": 163,
+      "sha256": "60cbb97816ddc021814b6ddbd4bd9aba328a974c986d4f93b4fdec5785d8b1ef"
+    },
+    {
+      "path": "vendor/tonypi/LICENSE",
+      "bytes": 1073,
+      "sha256": "f1ce5be1e30660becb292e13e1c1decb6dd8834e25e6e89f382e7fa2dbd60980"
+    },
+    {
+      "path": "vendor/tonypi/PROVENANCE.md",
+      "bytes": 5145,
+      "sha256": "26ce05eeda67f89e00db68fee13037a193f41e60d15b77ff6feb4ac939e9e1a7"
+    },
+    {
+      "path": "vendor/tonypi/SHA256SUMS",
+      "bytes": 2222,
+      "sha256": "b0ed831994e99c475c4905f7c8bb952ac5e34fa4c59c7df8389d83df622ffc15"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/head_pan.stl",
+      "bytes": 35884,
+      "sha256": "179ff9fada18d601580684ff809e6a4065e3296bce392225ed568ec32ad9a86d"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/head_tilt.stl",
+      "bytes": 15284,
+      "sha256": "027e1bfa83510906982c7e566b10f2d26cede99fd4f688f796050efca7cc0d29"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/l_ankle_pitch.stl",
+      "bytes": 57284,
+      "sha256": "ab56af0f2328b641626dd9f711bcc23e7a41bbcf7e76a0e0304902984c1f002b"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/l_ankle_roll.stl",
+      "bytes": 13784,
+      "sha256": "94d43daf6a44d8fec5d99c0981da86f9029bbb8a2449d66719bd17ca8d1d82d2"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/l_elbow.stl",
+      "bytes": 103284,
+      "sha256": "7577c33f0d97e47b0319c039d95824364259c2a1ad92b3c4153255fd984368d3"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/l_gripper.stl",
+      "bytes": 3284,
+      "sha256": "b9c4c2f52dec621e5aa0d456acb2d3ea6f1e7c11debd444e67bae62b6e5e749b"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/l_hip_pitch.stl",
+      "bytes": 104084,
+      "sha256": "cd55a259931645e5caefff178af251c7ea2bb7bdd756b76fc8a2bbd10be55776"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/l_hip_roll.stl",
+      "bytes": 57084,
+      "sha256": "24a70df0027b763233e7bbbc6e5f610aba00899b50d27d9c0e19d42a83304548"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/l_knee.stl",
+      "bytes": 56984,
+      "sha256": "94c37ee378a1580cb8246d4085341b31a13f98077149901fc88b4f5d0d4f890b"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/l_shoulder_pitch.stl",
+      "bytes": 56184,
+      "sha256": "ac8c04c6ada0c5e2e28290b7836d96789fafa1ee6776818de5cdb3916e500159"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/l_shoulder_roll.stl",
+      "bytes": 60184,
+      "sha256": "fbd3eac8057b5857dad1af5c7f563570dce8acb349897fd474e864f395ad130e"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/r_ankle_pitch.stl",
+      "bytes": 57284,
+      "sha256": "55fb849a7783658e000654a8fcb74ec53dabcf488c886c02e3bd845f970ba771"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/r_ankle_roll.stl",
+      "bytes": 13884,
+      "sha256": "7afe6dadc3283f8e2925755460b6d871805d85b521d490029a3a8185bbd0b8b3"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/r_elbow.stl",
+      "bytes": 103284,
+      "sha256": "ccbe7d44fdd95f50c559976605302c142f6f5a2a1098a031aeac3e0602bbde8c"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/r_gripper.stl",
+      "bytes": 3284,
+      "sha256": "bc7fd6005cca18100a906d788f9b586b12c7f0c4f162a2f9fd45054512d7eb44"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/r_hip_pitch.stl",
+      "bytes": 104084,
+      "sha256": "232acb5d4da68a1c3f1f4be5b305203dafec74d4a1230a99e77c9d5d061d371a"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/r_hip_roll.stl",
+      "bytes": 57084,
+      "sha256": "f439ddc094aed57ca96b2ff97cfff0c2a0bbe917e0326fa130f75b7771d3a2d9"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/r_knee.stl",
+      "bytes": 56984,
+      "sha256": "911a3179bb75a5c119c305dae6f5a1831edd641854a4aea21024a97e5199fed9"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/r_shoulder_pitch.stl",
+      "bytes": 57184,
+      "sha256": "c1ec25fba46f8733473d025953a04db7ea352a61b4960b24fd347bf8fd1ba19c"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/r_shoulder_roll.stl",
+      "bytes": 60184,
+      "sha256": "42a096c352d6a2e07cc4334698bd6064744b56a9daf23d3c87dd8126ffdd8130"
+    },
+    {
+      "path": "vendor/tonypi/model/assets/torso.stl",
+      "bytes": 146284,
+      "sha256": "e2c9beb45729cc074a708a7f93ae461fb6d560c650b1347008a912b738bfc207"
+    },
+    {
+      "path": "vendor/tonypi/model/robot.xml",
+      "bytes": 48207,
+      "sha256": "ff3f57c375d3ceb0990307101f5774a7c1e421a94803997c5f2f8f9cd3e4e08b"
+    },
+    {
+      "path": "vendor/tonypi/model/scene.xml",
+      "bytes": 1932,
+      "sha256": "41eb079b8bc2602fba39d406a426993b274d123abff23b55d4858c462f56f82f"
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TonyPi Pro Twin — Opus5.5</title>
+<style>
+  :root { --bg:#0f1720; --panel:#16212d; --text:#e6edf3; --muted:#9fb0c0; --accent:#5fb3f9; --line:#26384a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  header { padding:20px 16px 8px; max-width:1100px; margin:0 auto; }
+  h1 { margin:0; font-size:24px; } h1 span { color:var(--accent); font-weight:600; font-size:15px; margin-left:8px; }
+  header p { margin:6px 0 0; color:var(--muted); }
+  main { max-width:1100px; margin:0 auto; padding:8px 16px 32px; display:grid; gap:16px; grid-template-columns:minmax(0,1fr); }
+  @media (min-width:900px){ main { grid-template-columns:minmax(0,2fr) minmax(0,1fr); } }
+  #view { position:relative; background:var(--panel); border:1px solid var(--line); border-radius:10px; min-height:420px; height:62vh; overflow:hidden; }
+  #view canvas { display:block; width:100%; height:100%; }
+  #status { position:absolute; left:12px; top:10px; color:var(--muted); font-size:13px; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  button { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:7px 12px; font:inherit; cursor:pointer; }
+  button.on, button:hover { border-color:var(--accent); color:var(--accent); }
+  aside { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  aside h2 { font-size:16px; margin:4px 0 8px; } aside ul { padding-left:18px; margin:6px 0 12px; } aside li { margin:3px 0; }
+  a { color:var(--accent); } .note { color:var(--muted); font-size:13px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; } td { border-top:1px solid var(--line); padding:4px 2px; } td:last-child { text-align:right; }
+</style>
+</head>
+<body>
+<header>
+  <h1>TonyPi Pro digital twin <span>label: Opus5.5</span></h1>
+  <p>MuJoCo twin of the Hiwonder TonyPi Pro, built the same way as the Luka A2 Ultra twin: pinned vendor model + parameter ledger.</p>
+</header>
+<main>
+  <section>
+    <div id="view"><div id="status">Loading model…</div></div>
+    <div class="controls" id="clips"></div>
+    <p class="note">Drag to orbit, scroll to zoom. Each motion was simulated by MuJoCo on the floating-base twin (servos, contact and gravity) and is replayed here frame by frame; the browser runs no physics.</p>
+  </section>
+  <aside>
+    <h2>Model</h2>
+    <table>
+      <tr><td>Joints / servos</td><td>20 / 20 position servos</td></tr>
+      <tr><td>Mass (Hiwonder: about 1800 g)</td><td>1.800 kg</td></tr>
+      <tr><td>Ledger rows</td><td>628 (597 vendor, 29 Hiwonder, 2 missing)</td></tr>
+      <tr><td>Match to vendor sim, 2 s</td><td>3e-9 rad fixed, 8e-7 rad floor</td></tr>
+      <tr><td>Servo torque caps vs datasheets</td><td>within 0.3%</td></tr>
+    </table>
+    <h2>Validation boundary</h2>
+    <ul>
+      <li>Software checks only: no physical TonyPi Pro has been measured or replayed against this twin.</li>
+      <li>Servo calibration is borrowed from the upstream author's robot; your unit's columns are blank.</li>
+      <li>Vendor armature and friction are upstream estimates.</li>
+      <li>Demo motions are synthetic; Hiwonder's stock action files are not redistributed.</li>
+    </ul>
+    <h2>Links</h2>
+    <ul>
+      <li><a href="https://github.com/MDeanH/tonypi-pro-model-opus5.5">Source repository</a></li>
+      <li><a href="https://github.com/pab47/TonyPi">Vendor model: pab47/TonyPi (MIT)</a></li>
+      <li><a href="https://www.hiwonder.com/products/tonypi-pro">Hiwonder TonyPi Pro</a></li>
+    </ul>
+    <img src="preview.png" alt="MuJoCo render of the twin at its home pose" style="width:100%;border-radius:8px;border:1px solid var(--line)">
+  </aside>
+</main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+const view = document.getElementById('view'), status = document.getElementById('status');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x16212d);
+const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 20);
+camera.up.set(0, 0, 1); camera.position.set(-0.45, -0.75, 0.38);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0.17); controls.update();
+scene.add(new THREE.HemisphereLight(0xdde8f5, 0x223344, 1.1));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-1, -2, 3); scene.add(sun);
+const grid = new THREE.GridHelper(1.2, 24, 0x3a5470, 0x26384a); grid.rotation.x = Math.PI / 2; scene.add(grid);
+function resize(){ const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+const dec = (s, T) => { const b = Uint8Array.from(atob(s), c => c.charCodeAt(0)); return new T(b.buffer); };
+const model = await (await fetch('model.json')).json();
+const bodies = model.bodies.map(() => { const g = new THREE.Group(); scene.add(g); return g; });
+const mat = new THREE.MeshStandardMaterial({ color: 0xbcc6cf, metalness: 0.25, roughness: 0.55, flatShading: true });
+for (const m of model.meshes) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(dec(m.v, Float32Array), 3));
+  geo.setIndex(new THREE.BufferAttribute(dec(m.f, Uint32Array), 1));
+  geo.computeVertexNormals();
+  bodies[m.body - 1].add(new THREE.Mesh(geo, mat));
+}
+const clips = Object.fromEntries(Object.entries(model.clips).map(([k, c]) => [k, { n: c.frames, d: dec(c.data, Float32Array) }]));
+let current = Object.keys(clips)[0], t0 = performance.now();
+const bar = document.getElementById('clips');
+for (const name of Object.keys(clips)) {
+  const b = document.createElement('button'); b.textContent = name;
+  b.onclick = () => { current = name; t0 = performance.now(); [...bar.children].forEach(x => x.classList.toggle('on', x === b)); };
+  bar.appendChild(b);
+}
+bar.children[0].classList.add('on');
+status.textContent = '';
+const nb = model.nbody;
+function frame(now) {
+  const c = clips[current], i = Math.min(c.n - 1, Math.floor((now - t0) / 1000 * model.fps)) ;
+  if ((now - t0) / 1000 * model.fps > c.n + model.fps) t0 = now;
+  for (let b = 0; b < nb; b++) {
+    const o = (i * nb + b) * 7, d = c.d;
+    bodies[b].position.set(d[o], d[o + 1], d[o + 2]);
+    bodies[b].quaternion.set(d[o + 4], d[o + 5], d[o + 6], d[o + 3]);
+  }
+  controls.update(); renderer.render(scene, camera); requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

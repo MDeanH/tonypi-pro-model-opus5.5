@@ -1,0 +1,11 @@
+* text=auto eol=lf
+*.stl binary
+*.png binary
+*.d6a binary
+*.mjb binary
+*.xml text eol=lf
+*.csv text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.usda text eol=lf
