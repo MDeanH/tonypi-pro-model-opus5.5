@@ -45,9 +45,11 @@ COMMON_PINNED = (
     "tools/seed_ledger.py",
     "vendor/tonypi/SHA256SUMS",
     "vendor/tonypi/model/robot.xml",
+    "vendor/tonypi/model/scene.xml",  # the vendor floor's friction, used for every scene's ground
 )
 MJCF_PINNED = COMMON_PINNED + ("build/tonypi_pro_as_is.xml", "model/build_twin.py")
-CONTACT_PINNED = MJCF_PINNED + ("sim/build_contact_scene.py", "vendor/tonypi/model/scene.xml")
+CONTACT_PINNED = MJCF_PINNED + ("sim/build_contact_scene.py",)
+RECORD_SCHEMA = 2
 
 
 class IntegrityError(ValueError):
@@ -185,13 +187,16 @@ def verify_urdf_record(source: Path) -> tuple[dict, dict[str, object]]:
         raise IntegrityError(
             f"missing or unreadable URDF build record {record_path}: {exc}; run isaac_sim/build_tonypi_urdf.py"
         ) from exc
-    if not isinstance(record, dict) or record.get("schema_version") != 1:
+    if not isinstance(record, dict) or record.get("schema_version") != RECORD_SCHEMA:
         raise IntegrityError(f"{record_path}: unsupported build record schema")
     try:
         urdf_entry, generator, inputs = record["urdf"], record["generator"], record["inputs"]
         joints, placeholders = record["joints"], record["velocity_placeholders"]
         home = record["home_root_pose"]
-    except KeyError as exc:
+        terms = record["importer_joint_terms"]["joints"]
+        contact_classes = record["contact_classes"]
+        collision_sources = record["collision_sources"]
+    except (KeyError, TypeError) as exc:
         raise IntegrityError(f"{record_path}: missing key {exc}") from exc
     if fingerprint(source) != urdf_entry:
         raise IntegrityError(
@@ -209,6 +214,8 @@ def verify_urdf_record(source: Path) -> tuple[dict, dict[str, object]]:
         raise IntegrityError(f"{record_path}: unexpected joint list or velocity placeholders")
     if set(home) != {"x", "y", "z", "qw", "qx", "qy", "qz"}:
         raise IntegrityError(f"{record_path}: incomplete home_root_pose")
+    if set(terms) != set(joints) or not isinstance(contact_classes, dict) or not collision_sources:
+        raise IntegrityError(f"{record_path}: importer joint terms, contact classes or collision sources incomplete")
     return record, fingerprint(record_path)
 
 
@@ -241,6 +248,9 @@ def verify_derivative(source_type: str, source: Path, floating: bool) -> dict[st
             "velocity_placeholders": record["velocity_placeholders"],
             "velocity_placeholder_value": record.get("velocity_placeholder_value"),
             "home_root_pose": record["home_root_pose"],
+            "importer_joint_terms": record["importer_joint_terms"],
+            "contact_classes": record["contact_classes"],
+            "collision_sources": record["collision_sources"],
         }
     return {"method": "source is pinned directly by SOURCE_MANIFEST.json"}
 
@@ -276,6 +286,8 @@ def verify_source_bundle(source_type: str, source: Path, floating: bool = False)
     local_tools = [REPO / "isaac_sim/import_scene.py", Path(__file__).resolve()]
     if source_type == "urdf":
         local_tools.append(REPO / "isaac_sim/build_tonypi_urdf.py")
+    if source_type == "mjcf":
+        local_tools.append(REPO / "isaac_sim/mujoco_compat.py")
     if source_type == "mjcf" and floating:
         local_tools.append(REPO / "sim/build_contact_scene.py")
     return {
@@ -292,14 +304,36 @@ def verify_source_bundle(source_type: str, source: Path, floating: bool = False)
     }
 
 
-def write_integrity_report(preflight: dict[str, object], asset: Path, scene: Path) -> Path:
-    """Recheck sources after import, then save hashes beside the imported USD."""
+def comparable(bundle: dict[str, object]) -> dict[str, object]:
+    """The parts of a verified bundle that identify the model inputs.
+
+    The manifest file's own hash is left out: another tool may regenerate SOURCE_MANIFEST.json (for example to
+    pin new files) without changing any input of this import. Every pinned input is still compared by hash."""
+    return {key: value for key, value in bundle.items() if key != "source_manifest"}
+
+
+def recheck(preflight: dict[str, object]) -> dict[str, object]:
+    """Verify the sources again and refuse if any pinned input, the source or its derivation changed."""
     source_type = preflight["source_type"]
     floating = preflight["floating"]
     source_path = REPO / preflight["source"]["path"]  # type: ignore[index]
     current = verify_source_bundle(source_type, source_path, floating)  # type: ignore[arg-type]
-    if current != preflight:
-        raise IntegrityError("model inputs changed while Isaac Sim was importing")
+    before, after = comparable(preflight), comparable(current)
+    if before != after:
+        changed = sorted(key for key in set(before) | set(after) if before.get(key) != after.get(key))
+        if "pinned_inputs" in changed:
+            old = {item["path"]: item for item in before["pinned_inputs"]}  # type: ignore[union-attr,index]
+            new = {item["path"]: item for item in after["pinned_inputs"]}  # type: ignore[union-attr,index]
+            files = sorted(p for p in set(old) | set(new) if old.get(p) != new.get(p))
+            changed = [c for c in changed if c != "pinned_inputs"] + [f"pinned input {p}" for p in files]
+        raise IntegrityError(f"model inputs changed during the import: {', '.join(changed)}")
+    return current
+
+
+def write_integrity_report(preflight: dict[str, object], asset: Path, scene: Path,
+                           extra: dict[str, object] | None = None) -> Path:
+    """Recheck sources after import, then save hashes beside the imported USD."""
+    current = recheck(preflight)
     asset, scene = asset.resolve(), scene.resolve()
     repo_relative(asset)
     repo_relative(scene)
@@ -312,7 +346,7 @@ def write_integrity_report(preflight: dict[str, object], asset: Path, scene: Pat
             assets.append(fingerprint(path))
     if not any(item["path"] == repo_relative(asset) for item in assets):
         raise IntegrityError(f"imported USD is missing: {asset}")
-    report = {**current, "generated_scene": fingerprint(scene), "generated_assets": assets}
+    report = {**current, "generated_scene": fingerprint(scene), "generated_assets": assets, **(extra or {})}
     data = (json.dumps(report, indent=2, sort_keys=True) + "\n").encode("utf-8")
     temporary: Path | None = None
     try:

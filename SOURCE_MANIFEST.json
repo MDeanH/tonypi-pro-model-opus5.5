@@ -58,23 +58,28 @@
     },
     {
       "path": "isaac_sim/README.md",
-      "bytes": 11791,
-      "sha256": "b64b7fe47c500e07d7ee74c414a8776a74fd088d7ee78d2be428af7ac3e7cd63"
+      "bytes": 19963,
+      "sha256": "3c4d5ba0e74711f4a4d37afd1d5696010e91798c0d774d3ba11e17fd811854f3"
     },
     {
       "path": "isaac_sim/build_tonypi_urdf.py",
-      "bytes": 35676,
-      "sha256": "de7b3cd4ddfb5142663827a184cca781846cf816300fd4135d9edb2944f3ce6e"
+      "bytes": 43984,
+      "sha256": "83d281772dcca7538244601d6bb46ca4789122fe9761fb4cc6bd8b4eda792240"
     },
     {
       "path": "isaac_sim/check_newton.py",
-      "bytes": 12332,
-      "sha256": "6d4fc7129daf127604ebfdc4c3f637ab3ca35cbefb2cd984b06899dbb15f8979"
+      "bytes": 19169,
+      "sha256": "b7ddc3b016b4c92f5b3b2aeeca7a87ebb9ff6799e1d1c9b47e6ee013f87a0bc4"
     },
     {
       "path": "isaac_sim/import_scene.py",
-      "bytes": 22776,
-      "sha256": "75871a1b676caf46f889f6759926d0b6db5c62ab744eeadb6aa40dd6cbb4f8b7"
+      "bytes": 45876,
+      "sha256": "4cb3844b1e8bb6277524775b878328cb94861799c92138be0c21bdc923afb45c"
+    },
+    {
+      "path": "isaac_sim/mujoco_compat.py",
+      "bytes": 2213,
+      "sha256": "a72d6db698bf20e2fe30f715ad52a445d95b25711ce2993b98030aad0840f287"
     },
     {
       "path": "isaac_sim/run_scene.py",
@@ -83,13 +88,13 @@
     },
     {
       "path": "isaac_sim/source_integrity.py",
-      "bytes": 17056,
-      "sha256": "569745a0fdfa0432caa87a1a3be9b1e8f06f6d78ef8863270871796be8d784cc"
+      "bytes": 19203,
+      "sha256": "aa909093e84fa51ed7778458e2c542da520a9802bc680e963575cd080798a0f1"
     },
     {
       "path": "isaac_sim/test_build_tonypi_urdf.py",
-      "bytes": 33816,
-      "sha256": "3d08ff1fe701070367a7e6f91bf09a8f160de76781c94e1e61653869f2abd9db"
+      "bytes": 40123,
+      "sha256": "37b592366e897fd5178e076230d8609239fbbaad9da934cf8123c14149167eae"
     },
     {
       "path": "media/preview.png",

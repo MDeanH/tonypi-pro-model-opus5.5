@@ -8,26 +8,37 @@ MJCF (vendor/tonypi/model/robot.xml): the link tree, the visual STL meshes (each
 the vendor's left/right file swaps are followed) and the collision primitives. URDF has no capsule, so each
 vendor capsule becomes a cylinder plus two end spheres, which together are exactly the same solid.
 
-Servo speed: no joint has an active velocity row in the ledger yet (status missing). Each such joint is written
-with velocity="0", an explicit UNKNOWN placeholder as in the A2 build_luka_urdf.py, NOT a measured limit, and
-is listed in the printed summary and in the build record. An active row (for example a source=docs Hiwonder
-figure) replaces the placeholder on the next build. A joint with neither an active nor a missing velocity row
-stops the build.
+Units: every ledger row the builder reads must carry the unit its URDF field expects (m, rad, -, kg, kg*m^2,
+N*m, N*m*s/rad, N*m/rad, rad/s; see UNIT_RULES). A row in any other unit (for example a Hiwonder speed in deg/s
+or s/60deg) stops the build instead of being written mis-scaled.
 
-URDF cannot carry, so this candidate does not contain: joint armature (upstream ESTIMATE), the servo position
-gains (actuator.*.kp, dampratio, ctrlrange), MuJoCo contact semantics (frictionless condim-1 self-collision
-guards, priority-2 sole and pad contacts with friction 0.9, the parent/child contact excludes and the sole-sole
-pair), the IMU and foot-touch sites, and the sensors. The root link is torso at the URDF origin; the twin welds
-it at the ledger's scene.home.root pose (recorded in the build record), and the importer decides whether the
-base is fixed or floating.
+Servo speed comes from the ledger's joint.<j>.limit.velocity rows. A joint whose row has status missing is
+written with velocity="0", an explicit UNKNOWN placeholder as in the A2 build_luka_urdf.py, NOT a measured
+limit; it is listed in the printed summary and in the build record. Every importer reads velocity="0" as a
+0 rad/s limit (a frozen joint), so import the URDF only through isaac_sim/import_scene.py, which blocks the
+placeholder. An active row replaces the placeholder on the next build. A joint with neither an active nor a
+missing velocity row stops the build.
+
+URDF cannot carry, so this candidate does not contain: joint armature (upstream ESTIMATE, and 66-99.9% of each
+joint's inertia at the zero pose), the servo position gains (actuator.*.kp, dampratio, ctrlrange), MuJoCo
+contact semantics (frictionless condim-1 self-collision guards, priority-2 sole and pad contacts with friction
+0.9, the parent/child contact excludes and the sole-sole pair), the IMU and foot-touch sites, and the sensors.
+So the URDF matches the twin in kinematics, mass, centres of mass and link inertia only, not in dynamics. The
+build record therefore also carries, per joint, the terms an importer needs to restore the twin's dynamics:
+ledger armature, passive damping and friction, kp, dampratio and the servo damping kv that MuJoCo derives from
+dampratio (kv = 2 dampratio sqrt(kp / (M^-1)_jj) at the zero pose, M including armature), computed here by
+compiling the URDF in MuJoCo with the ledger armature. isaac_sim/import_scene.py authors them in its scene layer.
+The root link is torso at the URDF origin; the twin welds it at the ledger's scene.home.root pose (recorded in
+the build record), and the importer decides whether the base is fixed or floating.
 
 This is a model candidate, NOT validated against a physical TonyPi Pro. Only isaac_sim/generated/ is written;
-the ledger, the vendor files and the twin build are read-only inputs. The ledger check reuses
-tools/seed_ledger.ledger_problems, which compiles the vendor model with MuJoCo, so run this with the project venv.
+the ledger, the vendor files and the twin build are read-only inputs, and all of them must lie inside this
+repository. The ledger check reuses tools/seed_ledger.ledger_problems, which compiles the vendor model with
+MuJoCo, so run this with the project venv.
 
-Usage (from the repository root):
-  .venv/Scripts/python.exe -I isaac_sim/build_tonypi_urdf.py           write the URDF and its build record
-  .venv/Scripts/python.exe -I isaac_sim/build_tonypi_urdf.py --check   regenerate in memory; exit 1 if stale
+Usage (from the repository root; on Windows use .venv\\Scripts\\python.exe in place of .venv/bin/python):
+  .venv/bin/python -I isaac_sim/build_tonypi_urdf.py           write the URDF and its build record
+  .venv/bin/python -I isaac_sim/build_tonypi_urdf.py --check   regenerate in memory; exit 1 if stale
 """
 
 from __future__ import annotations
@@ -69,7 +80,43 @@ GEOM_ROLES = {"visual": "visual", "selfcol": "collision", "collision": "collisio
 COLLISION_KIND = {"selfcol": "self-collision guard (vendor: condim 1, friction 0)",
                   "collision": "contact geometry (vendor: priority 2, friction 0.9)"}
 ORIENTATION_ATTRS = ("euler", "axisangle", "xyaxes", "zaxis")
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+# The unit each ledger parameter family must carry to be written as is (URDF: SI, radians).
+UNIT_RULES = tuple((re.compile(pattern), unit) for pattern, unit in (
+    (r"link\.[^.]+\.mass", "kg"),
+    (r"link\.[^.]+\.com\.[xyz]", "m"),
+    (r"link\.[^.]+\.inertia\.i(xx|yy|zz|xy|xz|yz)", "kg*m^2"),
+    (r"joint\.[^.]+\.origin\.[xyz]", "m"),
+    (r"joint\.[^.]+\.origin\.(roll|pitch|yaw)", "rad"),
+    (r"joint\.[^.]+\.axis\.[xyz]", "-"),
+    (r"joint\.[^.]+\.limit\.(lower|upper)", "rad"),
+    (r"joint\.[^.]+\.limit\.effort", "N*m"),
+    (r"joint\.[^.]+\.limit\.velocity", "rad/s"),
+    (r"joint\.[^.]+\.dynamics\.damping", "N*m*s/rad"),
+    (r"joint\.[^.]+\.dynamics\.frictionloss", "N*m"),
+    (r"joint\.[^.]+\.dynamics\.armature", "kg*m^2"),
+    (r"actuator\.[^.]+\.kp", "N*m/rad"),
+    (r"actuator\.[^.]+\.dampratio", "-"),
+    (r"scene\.home\.root\.[xyz]", "m"),
+    (r"scene\.home\.root\.q[wxyz]", "-"),
+))
+SERVO_RULE = ("kv = 2 * dampratio * sqrt(kp / (M^-1)_jj), M = joint-space mass matrix at the zero pose including "
+              "the ledger armature (MuJoCo's dampratio rule for position actuators), computed by compiling this "
+              "URDF in MuJoCo")
+
+
+def required_unit(param: str) -> str:
+    for pattern, unit in UNIT_RULES:
+        if pattern.fullmatch(param):
+            return unit
+    raise BuildError(f"{param}: no unit rule in build_tonypi_urdf.UNIT_RULES; extend it before using this row")
+
+
+def check_unit(row: dict[str, str]) -> None:
+    expected = required_unit(row["param"])
+    if row.get("unit", "") != expected:
+        raise BuildError(f"{row['param']}: ledger unit {row.get('unit')!r}, but the URDF needs {expected!r}; "
+                         "convert the row (the builder never rescales)")
 
 
 class BuildError(ValueError):
@@ -161,13 +208,14 @@ class LedgerValues:
     """Active ledger values. Records every parameter read, so the summary can say where each number came from."""
 
     active: dict[str, dict[str, str]]
-    missing: set[str]
+    missing: dict[str, dict[str, str]]
     used: dict[str, dict[str, str]] = field(default_factory=dict)
 
     def number(self, param: str) -> float:
         row = self.active.get(param)
         if row is None:
             raise BuildError(f"missing active ledger value: {param}")
+        check_unit(row)
         value = finite(row["value"], param)
         self.used[param] = row
         return value
@@ -178,7 +226,16 @@ class LedgerValues:
     def peek(self, param: str) -> float | None:
         """An active value that is reported or recorded but not written into the URDF (not counted as used)."""
         row = self.active.get(param)
-        return None if row is None else finite(row["value"], param)
+        if row is None:
+            return None
+        check_unit(row)
+        return finite(row["value"], param)
+
+    def is_missing(self, param: str) -> bool:
+        row = self.missing.get(param)
+        if row is not None:
+            check_unit(row)
+        return row is not None
 
 
 def load_ledger(ledger_bytes: bytes, vendor: Path) -> LedgerValues:
@@ -203,7 +260,7 @@ def load_ledger(ledger_bytes: bytes, vendor: Path) -> LedgerValues:
         more = f"\n  ... {len(problems) - 10} more" if len(problems) > 10 else ""
         raise BuildError(f"ledger has {len(problems)} problem(s); fix them first:\n  {shown}{more}")
     return LedgerValues(active={r["param"]: r for r in rows if r["status"] == "active"},
-                        missing={r["param"] for r in rows if r["status"] == "missing"})
+                        missing={r["param"]: r for r in rows if r["status"] == "missing"})
 
 
 @dataclass
@@ -418,6 +475,60 @@ def validate_inertia(mass: float, values: dict[str, float], label: str) -> None:
         raise BuildError(f"{label}: inertia tensor is not positive definite")
 
 
+def contact_class(defaults: dict, cls: str) -> dict[str, object]:
+    """Vendor contact semantics of a collision class, for importers that can author physics materials."""
+    base = defaults.get(cls, {}).get("geom", {})
+    condim = int(base.get("condim", "3"))
+    friction = numbers(base.get("friction", "1 0.005 0.0001"), 3, f"vendor class {cls} friction")
+    priority = int(base.get("priority", "0"))
+    return {"condim": condim, "friction": friction, "priority": priority,
+            # condim 1 is frictionless whatever the friction coefficients say.
+            "sliding_friction": 0.0 if condim == 1 else friction[0]}
+
+
+def joint_importer_terms(urdf: bytes, terms: dict[str, dict[str, float | None]]) -> dict[str, dict[str, object]]:
+    """Per joint: the ledger's servo and passive terms plus MuJoCo's dampratio-derived servo damping kv.
+
+    The URDF is compiled in MuJoCo without visuals (no mesh is read); the ledger armature is added to each DOF,
+    and kv = 2 dampratio sqrt(kp / (M^-1)_jj) at the zero pose, which is how MuJoCo resolves a position
+    actuator's dampratio (the twin's actuator_biasprm reproduces this; see test_build_tonypi_urdf.py)."""
+    import mujoco
+    import numpy as np
+
+    marker = f'<robot name="{ROBOT_NAME}">'
+    text = urdf.decode("utf-8")
+    if text.count(marker) != 1:
+        raise BuildError("generated URDF lacks its robot element")
+    extension = '<mujoco><compiler discardvisual="true" fusestatic="false" balanceinertia="false"/></mujoco>'
+    try:
+        model = mujoco.MjModel.from_xml_string(text.replace(marker, marker + extension, 1))
+    except ValueError as exc:
+        raise BuildError(f"MuJoCo cannot compile the generated URDF: {exc}") from exc
+    if model.nv != len(terms):
+        raise BuildError(f"MuJoCo compiled {model.nv} DOFs from the URDF, expected {len(terms)}")
+    dofs = {}
+    for name, term in terms.items():
+        joint = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
+        if joint < 0:
+            raise BuildError(f"MuJoCo lost joint {name} of the generated URDF")
+        dofs[name] = int(model.jnt_dofadr[joint])
+        model.dof_armature[dofs[name]] = float(term["armature"])  # type: ignore[arg-type]
+    data = mujoco.MjData(model)
+    mujoco.mj_forward(model, data)
+    mass = np.zeros((model.nv, model.nv))
+    mujoco.mj_fullM(model, data, mass)
+    inverse = np.linalg.inv(mass)
+    out: dict[str, dict[str, object]] = {}
+    for name, term in terms.items():
+        dof = dofs[name]
+        reflected = 1.0 / float(inverse[dof, dof])
+        kv = 2.0 * float(term["dampratio"]) * math.sqrt(float(term["kp"]) * reflected)  # type: ignore[arg-type]
+        diagonal = float(mass[dof, dof])
+        out[name] = {**term, "kv": kv, "reflected_inertia": reflected, "mass_matrix_diagonal": diagonal,
+                     "armature_share_zero_pose": float(term["armature"]) / diagonal}  # type: ignore[arg-type]
+    return out
+
+
 # ----------------------------------------------------------------------------------------------- assembly
 
 
@@ -447,6 +558,12 @@ def generate(ledger: Path = LEDGER, output: Path = DEFAULT_OUTPUT, vendor: Path 
     """Build the URDF and its build record in memory. Writes nothing."""
     output = validated_output(output)
     ledger, vendor = ledger.resolve(), vendor.resolve()
+    for label, path in (("ledger", ledger), ("vendor model", vendor)):
+        # The build record names every input by its repository path, so refuse outside inputs before any work.
+        try:
+            path.relative_to(REPO)
+        except ValueError as exc:
+            raise BuildError(f"the {label} must lie inside the repository {REPO}: {path}") from exc
     if output in (ledger, vendor) or record_path_for(output) in (ledger, vendor):
         raise BuildError("output must not overwrite an input file")
     sums = vendor_sums()
@@ -529,6 +646,7 @@ def generate(ledger: Path = LEDGER, output: Path = DEFAULT_OUTPUT, vendor: Path 
     velocity_rows: dict[str, float] = {}
     gaps: list[str] = []
     dropped_armature: dict[str, float] = {}
+    joint_terms: dict[str, dict[str, float | None]] = {}
     parent_of = {b["name"]: b["parent"] for b in model.bodies}
     for joint_name in model.joints:
         prefix = f"joint.{joint_name}"
@@ -554,21 +672,36 @@ def generate(ledger: Path = LEDGER, output: Path = DEFAULT_OUTPUT, vendor: Path 
             dynamics[key] = value
         armature = led.peek(f"{prefix}.dynamics.armature")
         if armature is not None:
+            if armature < 0:
+                raise BuildError(f"{prefix}.dynamics.armature must not be negative")
             dropped_armature[joint_name] = armature
         velocity_param = f"{prefix}.limit.velocity"
         velocity = led.optional(velocity_param)
+        is_placeholder = False
         if velocity is not None:
             if velocity <= 0:
                 raise BuildError(f"{velocity_param} must be positive")
             velocity_rows[joint_name] = velocity
-        elif velocity_param in led.missing:
+        elif led.is_missing(velocity_param):
             # Explicit UNKNOWN placeholder (as in the A2 build_luka_urdf.py), never a measured speed limit.
             velocity = VELOCITY_PLACEHOLDER
+            is_placeholder = True
             placeholders.append(joint_name)
         else:
             raise BuildError(f"{velocity_param}: the ledger has neither an active nor a missing row")
+        kp, dampratio = led.peek(f"actuator.{joint_name}.kp"), led.peek(f"actuator.{joint_name}.dampratio")
+        if kp is None or dampratio is None or armature is None:
+            raise BuildError(f"{joint_name}: the ledger needs active actuator kp, dampratio and joint armature rows "
+                             "for the importer terms in the build record")
+        if kp <= 0 or dampratio < 0:
+            raise BuildError(f"{joint_name}: actuator kp must be positive and dampratio not negative")
+        joint_terms[joint_name] = {
+            "kp": kp, "dampratio": dampratio, "armature": armature, "damping": dynamics["damping"],
+            "frictionloss": dynamics["frictionloss"], "effort": effort,
+            "velocity": None if is_placeholder else velocity,
+        }
         joint = ET.SubElement(robot, "joint", {"name": joint_name, "type": "revolute"})
-        if velocity_param in led.missing:
+        if is_placeholder:
             joint.append(ET.Comment(f" velocity=\"0\": placeholder, ledger {velocity_param} is missing "))
         origin_element(joint, origin[:3], origin[3:])
         ET.SubElement(joint, "parent", {"link": parent_of[joint_name]})
@@ -593,7 +726,10 @@ def generate(ledger: Path = LEDGER, output: Path = DEFAULT_OUTPUT, vendor: Path 
     by_source: dict[str, int] = {}
     for row in led.used.values():
         by_source[row["source"]] = by_source.get(row["source"], 0) + 1
-    import mujoco  # only for the record: the ledger check above compiled the vendor model with it
+    import mujoco  # the ledger check above compiled the vendor model with it
+
+    importer_terms = joint_importer_terms(urdf, joint_terms)
+    contact_classes = {cls: contact_class(model.defaults, cls) for cls in COLLISION_KIND}
 
     inputs = [fingerprint(ledger, ledger_bytes), fingerprint(vendor, vendor_bytes), fingerprint(VENDOR_SUMS)]
     inputs += [fingerprint(path) for path in LEDGER_TOOLS]
@@ -629,6 +765,14 @@ def generate(ledger: Path = LEDGER, output: Path = DEFAULT_OUTPUT, vendor: Path 
         },
         "collision_sources": collision_sources,
         "collision_kinds": COLLISION_KIND,
+        "contact_classes": contact_classes,
+        "importer_joint_terms": {
+            "scope": ("ledger terms URDF cannot carry, for importers to author (isaac_sim/import_scene.py); "
+                      "SI units, per radian"),
+            "kv_rule": SERVO_RULE,
+            "mujoco_version": mujoco.__version__,
+            "joints": importer_terms,
+        },
     }
     record_bytes = (json.dumps(record, indent=2, sort_keys=True) + "\n").encode("utf-8")
     summary = [
@@ -644,6 +788,10 @@ def generate(ledger: Path = LEDGER, output: Path = DEFAULT_OUTPUT, vendor: Path 
         f"dynamics gaps written as 0 (as in model/build_twin.py): {len(gaps)}",
         f"not representable in URDF, dropped: armature on {len(dropped_armature)} joints, servo kp/dampratio/"
         f"ctrlrange, MuJoCo contact parameters/excludes/sole-sole pair, {model.sites} sites, sensors",
+        "armature share of each joint's zero-pose inertia (so the URDF alone is not the twin's dynamics): "
+        f"{min(t['armature_share_zero_pose'] for t in importer_terms.values()):.3f} to "
+        f"{max(t['armature_share_zero_pose'] for t in importer_terms.values()):.4f}; armature, passive terms and "
+        "servo kp/kv recorded in the build record for the importer",
         f"root link {model.root_body} at the URDF origin; the twin welds it at scene.home.root "
         f"({home['x']}, {home['y']}, {home['z']}) m; the importer decides fixed or floating base",
     ]

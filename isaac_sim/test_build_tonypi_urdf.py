@@ -6,8 +6,15 @@ build/tonypi_pro_as_is.mjb, the exact binary twin. Compared, in the torso frame:
 random joint configurations (forward kinematics), link masses, centres of mass, full inertia tensors about the
 COM, joint axes, anchors and ranges, passive damping and friction, the placement of every visual mesh vertex and
 every collision primitive (each vendor capsule against its cylinder plus two end spheres). Max errors are printed.
+It also shows what the URDF does NOT match: the joint-space mass matrix of the URDF equals the twin's minus the
+armature (which URDF cannot carry), and the build record's importer terms (armature, servo kp and the
+dampratio-derived kv) reproduce the twin's compiled values.
 
-Usage (repository root): .venv/Scripts/python.exe -I isaac_sim/test_build_tonypi_urdf.py [-v]
+Prerequisite: the binary twin build/tonypi_pro_as_is.mjb (git-ignored; run model/build_twin.py first). Without
+it the equivalence tests are skipped with that reason.
+
+Usage (repository root; on Windows use .venv\\Scripts\\python.exe in place of .venv/bin/python):
+  .venv/bin/python -I isaac_sim/test_build_tonypi_urdf.py [-v]
 """
 
 from __future__ import annotations
@@ -19,6 +26,7 @@ import sys
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
+from xml.sax.saxutils import quoteattr
 
 import mujoco
 import numpy as np
@@ -75,7 +83,7 @@ def load_urdf_in_mujoco(urdf: Path, scratch: Path) -> mujoco.MjModel:
     marker = f'<robot name="{ROBOT_NAME}">'
     if text.count(marker) != 1:
         raise AssertionError(f"{urdf}: expected one {marker}")
-    extension = (f'<mujoco><compiler meshdir="{urdf.parent.resolve().as_posix()}" strippath="false" '
+    extension = (f'<mujoco><compiler meshdir={quoteattr(urdf.parent.resolve().as_posix())} strippath="false" '
                  'fusestatic="false" discardvisual="false" balanceinertia="false"/></mujoco>')
     copy = scratch / f"{urdf.stem}.mujoco_check.urdf"
     copy.write_text(text.replace(marker, marker + extension, 1), encoding="utf-8")
@@ -87,6 +95,12 @@ def load_urdf_in_mujoco(urdf: Path, scratch: Path) -> mujoco.MjModel:
 
 def names(model: mujoco.MjModel, kind, count: int) -> dict[str, int]:
     return {mujoco.mj_id2name(model, kind, i): i for i in range(count)}
+
+
+def full_mass_matrix(model: mujoco.MjModel, data: mujoco.MjData) -> np.ndarray:
+    out = np.zeros((model.nv, model.nv))
+    mujoco.mj_fullM(model, out, data.qM) if hasattr(data, "qM") else mujoco.mj_fullM(model, data, out)
+    return out
 
 
 def full_inertia(model: mujoco.MjModel, body: int) -> np.ndarray:
@@ -139,13 +153,19 @@ def equivalence(urdf: Path, scratch: Path, home: dict[str, float]) -> dict[str, 
         armature[name] = (float(twin.dof_armature[ti]), float(cand.dof_armature[ci]))
         if not cand.jnt_limited[k]:
             raise AssertionError(f"{name}: URDF joint is not limited in MuJoCo")
-    # Effort: MuJoCo's URDF parser maps <limit effort> to the joint's actuator force range when it supports it.
-    effort = {"mapped_by_parser": bool(np.any(cand.jnt_actfrclimited)), "max_abs_error": 0.0}
-    if effort["mapped_by_parser"]:
-        for a in range(twin.nu):
-            jname = mujoco.mj_id2name(twin, mujoco.mjtObj.mjOBJ_JOINT, int(twin.actuator_trnid[a, 0]))
-            effort["max_abs_error"] = max(effort["max_abs_error"], float(np.abs(
-                twin.actuator_forcerange[a] - cand.jnt_actfrcrange[cj[jname]]).max()))
+    # Effort: compared twice, as MuJoCo's URDF parser maps <limit effort> (joint actuator force range) and as the
+    # URDF text states it, both against the twin servos' force range.
+    limits = {j.get("name"): float(j.find("limit").get("effort")) for j in ET.parse(urdf).getroot().findall("joint")}
+    effort = {"mapped_by_parser": bool(np.all(cand.jnt_actfrclimited[[cj[n] for n in joints]])),
+              "max_abs_error": 0.0, "urdf_text_max_abs_error": 0.0, "compared": 0}
+    for a in range(twin.nu):
+        jname = mujoco.mj_id2name(twin, mujoco.mjtObj.mjOBJ_JOINT, int(twin.actuator_trnid[a, 0]))
+        low, high = twin.actuator_forcerange[a]
+        effort["max_abs_error"] = max(effort["max_abs_error"], float(np.abs(
+            twin.actuator_forcerange[a] - cand.jnt_actfrcrange[cj[jname]]).max()))
+        effort["urdf_text_max_abs_error"] = max(effort["urdf_text_max_abs_error"],
+                                                abs(limits[jname] - high), abs(-limits[jname] - low))
+        effort["compared"] += 1
 
     home_pos = np.array([home["x"], home["y"], home["z"]])
     home_rot = quat_mat(np.array([home[k] for k in ("qw", "qx", "qy", "qz")]) /
@@ -283,6 +303,8 @@ def compare_collisions(twin, td, cand, cd, rel_p, rel_r, bump) -> dict[str, int]
 class BuildTonyPiUrdfTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        cls.twin_missing = None if MJB.is_file() else (
+            f"{MJB.relative_to(REPO).as_posix()} is missing (git-ignored); run model/build_twin.py first")
         GENERATED_DIR.mkdir(parents=True, exist_ok=True)
         cls._tmp = tempfile.TemporaryDirectory(dir=GENERATED_DIR)
         cls.tmp = Path(cls._tmp.name)
@@ -407,11 +429,17 @@ class BuildTonyPiUrdfTests(unittest.TestCase):
 
     # ----------------------------------------------------------------------------------- equivalence
 
+    def require_twin(self) -> None:
+        if self.twin_missing:
+            self.skipTest(self.twin_missing)
+
     def test_mujoco_equivalence_with_the_binary_twin(self) -> None:
+        self.require_twin()
         home = {k: float(self.active[f"scene.home.root.{k}"]["value"]) for k in ("x", "y", "z", "qw", "qx", "qy", "qz")}
-        targets = [self.output] + ([DEFAULT_OUTPUT] if DEFAULT_OUTPUT.is_file() else [])
-        for urdf in targets:
+        for urdf in (self.output, DEFAULT_OUTPUT):
             with self.subTest(urdf=urdf.relative_to(REPO).as_posix()):
+                if not urdf.is_file():
+                    self.skipTest(f"{urdf.relative_to(REPO).as_posix()} not built (run isaac_sim/build_tonypi_urdf.py)")
                 result = equivalence(urdf, self.tmp, home)
                 errors = result["errors"]
                 print(f"\nMuJoCo equivalence: {urdf.relative_to(REPO).as_posix()} vs "
@@ -437,11 +465,14 @@ class BuildTonyPiUrdfTests(unittest.TestCase):
                 self.assertLessEqual(errors["damping"], 1e-12)
                 self.assertLessEqual(errors["frictionloss"], 1e-12)
                 self.assertTrue(all(v[1] == 0.0 for v in arm.values()))
-                if result["effort"]["mapped_by_parser"]:
-                    self.assertLessEqual(result["effort"]["max_abs_error"], 1e-12)
+                self.assertTrue(result["effort"]["mapped_by_parser"], "MuJoCo did not map <limit effort>")
+                self.assertEqual(result["effort"]["compared"], EXPECTED_JOINTS)
+                self.assertLessEqual(result["effort"]["max_abs_error"], 1e-12)
+                self.assertLessEqual(result["effort"]["urdf_text_max_abs_error"], 1e-12)
 
     def test_equivalence_detects_a_one_micron_frame_change_and_a_mass_change(self) -> None:
         """Negative control: the check is not vacuous. A 1 um joint offset or a 1 ppm mass change is caught."""
+        self.require_twin()
         home = {k: float(self.active[f"scene.home.root.{k}"]["value"]) for k in ("x", "y", "z", "qw", "qx", "qy", "qz")}
         for param, delta, key, limit in (("joint.r_knee.origin.z", 1e-6, "link_pos_m", TOL_POS),
                                          ("link.l_elbow.mass", 1e-6 * 0.076, "mass_rel", TOL_REL)):
@@ -458,7 +489,68 @@ class BuildTonyPiUrdfTests(unittest.TestCase):
                     errors = equivalence(out, root, home)["errors"]
                 self.assertGreater(errors[key], 100 * limit, f"{param} change went undetected: {errors[key]}")
 
+    def test_mass_matrix_is_the_twins_minus_armature_and_importer_terms_match_the_twin(self) -> None:
+        """What the URDF leaves out, quantified: armature is most of each joint's inertia."""
+        self.require_twin()
+        twin = mujoco.MjModel.from_binary_path(str(MJB))
+        cand = load_urdf_in_mujoco(self.output, self.tmp)
+        terms = self.candidate_record()["importer_joint_terms"]["joints"]
+        tj = names(twin, mujoco.mjtObj.mjOBJ_JOINT, twin.njnt)
+        cj = names(cand, mujoco.mjtObj.mjOBJ_JOINT, cand.njnt)
+        joints = list(self.vendor.joints)
+        tdof = [int(twin.jnt_dofadr[tj[n]]) for n in joints]
+        cdof = [int(cand.jnt_dofadr[cj[n]]) for n in joints]
+        armature = np.array([twin.dof_armature[d] for d in tdof])
+        td, cd = mujoco.MjData(twin), mujoco.MjData(cand)
+        rng = np.random.default_rng(SEED)
+        worst, share = 0.0, None
+        for config in range(CONFIGS + 1):
+            for name in joints:
+                lo, hi = twin.jnt_range[tj[name]]
+                q = 0.0 if config == 0 else rng.uniform(lo, hi)
+                td.qpos[twin.jnt_qposadr[tj[name]]] = q
+                cd.qpos[cand.jnt_qposadr[cj[name]]] = q
+            mujoco.mj_forward(twin, td)
+            mujoco.mj_forward(cand, cd)
+            mt, mc = full_mass_matrix(twin, td), full_mass_matrix(cand, cd)
+            mt, mc = mt[np.ix_(tdof, tdof)], mc[np.ix_(cdof, cdof)]
+            worst = max(worst, float(np.abs(mt - np.diag(armature) - mc).max() / np.abs(mt).max()))
+            if config == 0:
+                share = armature / np.diag(mt)
+        self.assertLessEqual(worst, 1e-12)
+        print(f"\nJoint-space mass matrix: URDF = twin - diag(armature) to {worst:.1e} relative over "
+              f"{CONFIGS + 1} configurations; armature share of the zero-pose diagonal: "
+              + ", ".join(f"{n} {s:.4f}" for n, s in zip(joints, share)))
+        for name, d, s in zip(joints, tdof, share):
+            actuator = [a for a in range(twin.nu) if twin.actuator_trnid[a, 0] == tj[name]]
+            self.assertEqual(len(actuator), 1)
+            kv = -float(twin.actuator_biasprm[actuator[0], 2])
+            self.assertLessEqual(abs(terms[name]["kv"] - kv) / kv, 1e-9, name)
+            self.assertEqual(terms[name]["kp"], float(twin.actuator_gainprm[actuator[0], 0]))
+            self.assertEqual(terms[name]["armature"], float(twin.dof_armature[d]))
+            self.assertEqual(terms[name]["damping"], float(twin.dof_damping[d]))
+            self.assertEqual(terms[name]["frictionloss"], float(twin.dof_frictionloss[d]))
+            self.assertEqual(terms[name]["effort"], float(twin.actuator_forcerange[actuator[0], 1]))
+            self.assertLessEqual(abs(terms[name]["armature_share_zero_pose"] - s), 1e-12, name)
+
     # ------------------------------------------------------------------------------------ refusals
+
+    def test_ledger_row_in_another_unit_is_refused(self) -> None:
+        rows = [dict(r) for r in self.rows]
+        row = next(r for r in rows if r["param"] == "joint.head_pan.limit.velocity" and r["status"] == "active")
+        row["status"] = "deprecated"
+        rows.append(dict(row, value="600", unit="deg/s", source="estimate", status="active", evidence="test",
+                         note="test"))
+        self.assert_refused(rows, "ledger unit 'deg/s', but the URDF needs 'rad/s'")
+        rows = [dict(r) for r in self.rows]
+        next(r for r in rows if r["param"] == "link.head_pan.mass" and r["status"] == "active")["unit"] = "g"
+        self.assert_refused(rows, "ledger unit 'g', but the URDF needs 'kg'")
+
+    def test_ledger_outside_the_repository_is_refused_before_building(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            ledger = write_ledger(Path(directory), self.fieldnames, self.rows)
+            with self.assertRaisesRegex(BuildError, "the ledger must lie inside the repository"):
+                generate(ledger=ledger, output=self.tmp / "outside.urdf")
 
     def test_ledger_problem_stops_before_writing(self) -> None:
         rows = [dict(r) for r in self.rows]
@@ -468,7 +560,12 @@ class BuildTonyPiUrdfTests(unittest.TestCase):
     def test_missing_active_mass_stops_before_writing(self) -> None:
         rows = [dict(r) for r in self.rows]
         next(r for r in rows if r["param"] == "link.head_pan.mass" and r["status"] == "active")["status"] = "deprecated"
-        self.assert_refused(rows, "missing active ledger value: link.head_pan.mass")
+        # tools/seed_ledger.ledger_problems now catches this first; the builder's own lookup is the backstop.
+        self.assert_refused(rows, r"(?s)(missing active ledger value: |problem.*)link\.head_pan\.mass")
+        from build_tonypi_urdf import LedgerValues
+
+        with self.assertRaisesRegex(BuildError, "missing active ledger value: link.head_pan.mass"):
+            LedgerValues(active={}, missing={}).number("link.head_pan.mass")
 
     def test_invalid_inertia_is_rejected(self) -> None:
         rows = [dict(r) for r in self.rows]
@@ -505,6 +602,8 @@ class BuildTonyPiUrdfTests(unittest.TestCase):
     def test_outputs_stay_in_generated_and_never_overwrite_evidence(self) -> None:
         for evidence in (REPO / "SOURCE_MANIFEST.json", LEDGER, VENDOR_MJCF, MJB):
             with self.subTest(evidence=evidence.name):
+                if not evidence.is_file():
+                    self.skipTest(f"{evidence.name} is not present")
                 original = evidence.read_bytes()
                 with self.assertRaisesRegex(BuildError, "output must be a .urdf below"):
                     build(output=evidence)
